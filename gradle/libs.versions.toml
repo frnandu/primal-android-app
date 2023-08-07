@@ -1,5 +1,5 @@
 [versions]
-agp = "8.1.0-rc01"
+agp = "8.1.0"
 appcompat = "1.6.1"
 coil = "2.4.0"
 constraintlayout = "2.1.4"
@@ -11,7 +11,7 @@ kotlinx-serialization-json = "1.5.1"
 material-icons = "1.4.3"
 mockk = "1.13.5"
 okhttp = "4.11.0"
-org-jetbrains-kotlin-android = "1.8.10"
+org-jetbrains-kotlin-android = "1.9.0"
 kotlinx-coroutines="1.7.2"
 compose-bom = "2023.06.01"
 core-ktx = "1.10.1"
@@ -25,9 +25,9 @@ accompanist = "0.30.1"
 dagger = "2.47"
 hilt = "1.0.0"
 retrofit = "2.9.0"
-paging = "3.2.0-rc01"
+paging = "3.2.0"
 room = "2.5.2"
-ksp = "1.8.10-1.0.9"
+ksp = "1.9.0-1.0.12"
 url-detector = "0.1.23"
 spongycastle = "1.58.0.0"
 secp256k1-kmp = "0.10.1"
@@ -63,6 +63,7 @@ compose-pager-indicators = { module = "com.google.accompanist:accompanist-pager-
 constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayout" }
 compose-constraintlayout = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "constraintlayout-compose" }
 
+lottie-compose = { module = "com.airbnb.android:lottie-compose", version = "5.2.0" }
 navigation-compose = { module = "androidx.navigation:navigation-compose", version = "2.6.0" }
 navigation-hilt = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hilt" }
 navigation-material = { module = "com.google.accompanist:accompanist-navigation-material", version.ref = "accompanist" }
@@ -80,6 +81,7 @@ hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "dagge
 # Networking libs
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
+okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "okhttp" }
 
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 retrofit-converter-scalars = { module = "com.squareup.retrofit2:converter-scalars", version.ref = "retrofit" }

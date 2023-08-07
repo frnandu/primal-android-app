@@ -17,8 +17,10 @@ import net.primal.android.core.compose.media.model.MediaResourceUi
 import net.primal.android.feed.repository.FeedRepository
 import net.primal.android.feed.repository.PostRepository
 import net.primal.android.navigation.profileId
+import net.primal.android.networking.relays.errors.NostrPublishException
 import net.primal.android.networking.sockets.errors.WssException
-import net.primal.android.profile.db.displayNameUiFriendly
+import net.primal.android.profile.db.authorNameUiFriendly
+import net.primal.android.profile.db.userNameUiFriendly
 import net.primal.android.profile.details.ProfileContract.UiEvent
 import net.primal.android.profile.details.ProfileContract.UiState
 import net.primal.android.profile.details.model.ProfileDetailsUi
@@ -67,6 +69,7 @@ class ProfileViewModel @Inject constructor(
         _event.collect {
             when (it) {
                 is UiEvent.PostLikeAction -> likePost(it)
+                is UiEvent.RepostAction -> repostPost(it)
             }
         }
     }
@@ -86,7 +89,8 @@ class ProfileViewModel @Inject constructor(
                     profileDetails = if (it.metadata != null) {
                         ProfileDetailsUi(
                             pubkey = it.metadata.ownerId,
-                            displayName = it.metadata.displayNameUiFriendly(),
+                            authorDisplayName = it.metadata.authorNameUiFriendly(),
+                            userDisplayName = it.metadata.userNameUiFriendly(),
                             coverUrl = it.metadata.banner,
                             avatarUrl = it.metadata.picture,
                             internetIdentifier = it.metadata.internetIdentifier,
@@ -123,7 +127,19 @@ class ProfileViewModel @Inject constructor(
                 postId = postLikeAction.postId,
                 postAuthorId = postLikeAction.postAuthorId,
             )
-        } catch (error: PostRepository.FailedToPublishLikeEvent) {
+        } catch (error: NostrPublishException) {
+            // Propagate error to the UI
+        }
+    }
+
+    private fun repostPost(repostAction: UiEvent.RepostAction) = viewModelScope.launch {
+        try {
+            postRepository.repostPost(
+                postId = repostAction.postId,
+                postAuthorId = repostAction.postAuthorId,
+                postRawNostrEvent = repostAction.postNostrEvent,
+            )
+        } catch (error: NostrPublishException) {
             // Propagate error to the UI
         }
     }

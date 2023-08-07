@@ -31,6 +31,8 @@ import net.primal.android.discuss.feed.FeedScreen
 import net.primal.android.discuss.feed.FeedViewModel
 import net.primal.android.discuss.list.FeedListScreen
 import net.primal.android.discuss.list.FeedListViewModel
+import net.primal.android.discuss.post.NewPostScreen
+import net.primal.android.discuss.post.NewPostViewModel
 import net.primal.android.drawer.DrawerScreenDestination
 import net.primal.android.explore.feed.ExploreFeedScreen
 import net.primal.android.explore.feed.ExploreFeedViewModel
@@ -58,6 +60,10 @@ private fun NavController.navigateToLogout() = navigate(route = "logout")
 
 private fun NavController.navigateToFeedList() = navigate(route = "feed/list")
 
+private fun NavController.navigateToNewPost(preFillContent: String?) =
+    navigate(route = "feed/new?$NewPostPreFillContent=${preFillContent.orEmpty().asUrlEncoded()}")
+
+
 private val NavController.topLevelNavOptions
     get() = navOptions {
         val feedDestination = backQueue.find { it.destination.route?.contains("feed") == true }
@@ -80,7 +86,7 @@ private fun NavController.navigateToNotifications() =
     navigate(route = "notifications", navOptions = topLevelNavOptions)
 
 private fun NavController.navigateToProfile(profileId: String? = null) = when {
-    profileId != null -> navigate(route = "profile?profileId=$profileId")
+    profileId != null -> navigate(route = "profile?$ProfileId=$profileId")
     else -> navigate(route = "profile")
 }
 
@@ -189,6 +195,17 @@ fun PrimalAppNavigation() {
                 navController = navController,
             )
 
+            newPost(
+                route = "feed/new?$NewPostPreFillContent={$NewPostPreFillContent}",
+                arguments = listOf(
+                    navArgument(NewPostPreFillContent) {
+                        type = NavType.StringType
+                        nullable = true
+                    }
+                ),
+                navController = navController,
+            )
+
             thread(
                 route = "thread/{$PostId}",
                 arguments = listOf(
@@ -263,10 +280,28 @@ private fun NavGraphBuilder.feed(
     FeedScreen(
         viewModel = viewModel,
         onFeedsClick = { navController.navigateToFeedList() },
+        onNewPostClick = { preFillContent -> navController.navigateToNewPost(preFillContent) },
         onPostClick = { postId -> navController.navigateToThread(postId = postId) },
         onProfileClick = { profileId -> navController.navigateToProfile(profileId = profileId) },
+        onHashtagClick = { hashtag -> navController.navigateToExploreFeed(query = hashtag) },
         onTopLevelDestinationChanged = onTopLevelDestinationChanged,
         onDrawerScreenClick = onDrawerScreenClick,
+    )
+}
+
+private fun NavGraphBuilder.newPost(
+    route: String,
+    arguments: List<NamedNavArgument>,
+    navController: NavController,
+) = composable(
+    route = route,
+    arguments = arguments,
+) {
+    val viewModel = hiltViewModel<NewPostViewModel>(it)
+    LockToOrientationPortrait()
+    NewPostScreen(
+        viewModel = viewModel,
+        onClose = { navController.navigateUp() },
     )
 }
 
@@ -279,8 +314,10 @@ private fun NavGraphBuilder.feedList(
 ) {
     val viewModel = hiltViewModel<FeedListViewModel>(it)
     LockToOrientationPortrait()
-    FeedListScreen(viewModel = viewModel,
-        onFeedSelected = { navController.navigateToFeed(directive = it) })
+    FeedListScreen(
+        viewModel = viewModel,
+        onFeedSelected = { directive -> navController.navigateToFeed(directive = directive) }
+    )
 }
 
 private fun NavGraphBuilder.explore(
@@ -315,7 +352,9 @@ private fun NavGraphBuilder.exploreFeed(
         viewModel = viewModel,
         onClose = { navController.navigateUp() },
         onPostClick = { postId -> navController.navigateToThread(postId)},
+        onPostQuoteClick = { preFillContent -> navController.navigateToNewPost(preFillContent) },
         onProfileClick = { profileId -> navController.navigateToProfile(profileId) },
+        onHashtagClick = { hashtag -> navController.navigateToExploreFeed(query = hashtag) },
     )
 }
 
@@ -369,7 +408,9 @@ private fun NavGraphBuilder.thread(
         viewModel = viewModel,
         onClose = { navController.navigateUp() },
         onPostClick = { postId -> navController.navigateToThread(postId) },
-        onProfileClick = { profileId -> navController.navigateToProfile(profileId = profileId) },
+        onPostQuoteClick = { preFillContent -> navController.navigateToNewPost(preFillContent) },
+        onProfileClick = { profileId -> navController.navigateToProfile(profileId) },
+        onHashtagClick = { hashtag -> navController.navigateToExploreFeed(query = hashtag) },
     )
 }
 
@@ -388,7 +429,9 @@ private fun NavGraphBuilder.profile(
         viewModel = viewModel,
         onClose = { navController.navigateUp() },
         onPostClick = { postId -> navController.navigateToThread(postId = postId) },
+        onPostQuoteClick = { preFillContent -> navController.navigateToNewPost(preFillContent) },
         onProfileClick = { profileId -> navController.navigateToProfile(profileId = profileId) },
+        onHashtagClick = { hashtag -> navController.navigateToExploreFeed(query = hashtag) },
     )
 }
 

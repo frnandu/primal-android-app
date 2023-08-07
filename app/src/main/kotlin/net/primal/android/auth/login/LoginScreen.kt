@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -154,7 +155,7 @@ fun LoginContent(
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = nsecValue,
-                onValueChange = { input -> nsecValue = input },
+                onValueChange = { input -> nsecValue = input.trim() },
                 placeholder = {
                     Text(
                         modifier = Modifier.fillMaxWidth(),
@@ -220,6 +221,7 @@ fun LoginContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp)
+                .height(56.dp)
                 .align(alignment = Alignment.CenterHorizontally),
             loading = state.loading,
             onClick = {

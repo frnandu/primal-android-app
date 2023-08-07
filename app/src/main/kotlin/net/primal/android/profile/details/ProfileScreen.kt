@@ -74,8 +74,8 @@ import net.primal.android.core.compose.AvatarThumbnailListItemImage
 import net.primal.android.core.compose.IconText
 import net.primal.android.core.compose.NostrUserText
 import net.primal.android.core.compose.feed.FeedLazyColumn
-import net.primal.android.core.compose.feed.LoadingItem
-import net.primal.android.core.compose.feed.NoFeedContent
+import net.primal.android.core.compose.feed.FeedLoading
+import net.primal.android.core.compose.feed.FeedNoContent
 import net.primal.android.core.compose.icons.PrimalIcons
 import net.primal.android.core.compose.icons.primaliconpack.ArrowBack
 import net.primal.android.core.compose.icons.primaliconpack.Key
@@ -85,6 +85,7 @@ import net.primal.android.core.ext.findByUrl
 import net.primal.android.core.ext.findNearestOrNull
 import net.primal.android.core.utils.asEllipsizedNpub
 import net.primal.android.core.utils.isPrimalIdentifier
+import net.primal.android.crypto.hexToNoteHrp
 import net.primal.android.profile.details.model.ProfileDetailsUi
 import net.primal.android.profile.details.model.ProfileStatsUi
 import net.primal.android.theme.AppTheme
@@ -95,7 +96,9 @@ fun ProfileScreen(
     viewModel: ProfileViewModel,
     onClose: () -> Unit,
     onPostClick: (String) -> Unit,
+    onPostQuoteClick: (String) -> Unit,
     onProfileClick: (String) -> Unit,
+    onHashtagClick: (String) -> Unit,
 ) {
     val uiState = viewModel.state.collectAsState()
 
@@ -105,7 +108,9 @@ fun ProfileScreen(
         state = uiState.value,
         onClose = onClose,
         onPostClick = onPostClick,
+        onPostQuoteClick = onPostQuoteClick,
         onProfileClick = onProfileClick,
+        onHashtagClick = onHashtagClick,
         eventPublisher = { viewModel.setEvent(it) },
     )
 }
@@ -123,13 +128,15 @@ private fun AdjustProfileStatusBarColor() {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     state: ProfileContract.UiState,
     onClose: () -> Unit,
     onPostClick: (String) -> Unit,
+    onPostQuoteClick: (String) -> Unit,
     onProfileClick: (String) -> Unit,
+    onHashtagClick: (String) -> Unit,
     eventPublisher: (ProfileContract.UiEvent) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -197,7 +204,10 @@ fun ProfileScreen(
                     onProfileClick(it)
                 }
             },
-            onPostLike = {
+            onPostReplyClick = {
+                onPostClick(it)
+            },
+            onPostLikeClick = {
                 eventPublisher(
                     ProfileContract.UiEvent.PostLikeAction(
                         postId = it.postId,
@@ -205,6 +215,19 @@ fun ProfileScreen(
                     )
                 )
             },
+            onRepostClick = {
+                eventPublisher(
+                    ProfileContract.UiEvent.RepostAction(
+                        postId = it.postId,
+                        postAuthorId = it.authorId,
+                        postNostrEvent = it.rawNostrEventJson,
+                    )
+                )
+            },
+            onPostQuoteClick = {
+                onPostQuoteClick("\n\nnostr:${it.postId.hexToNoteHrp()}")
+            },
+            onHashtagClick = onHashtagClick,
             shouldShowLoadingState = false,
             shouldShowNoContentState = false,
             stickyHeader = {
@@ -231,7 +254,7 @@ fun ProfileScreen(
                             exit = fadeOut(),
                         ) {
                             NostrUserText(
-                                displayName = state.profileDetails?.displayName
+                                displayName = state.profileDetails?.authorDisplayName
                                     ?: state.profileId.asEllipsizedNpub(),
                                 internetIdentifier = state.profileDetails?.internetIdentifier,
                             )
@@ -248,13 +271,13 @@ fun ProfileScreen(
 
                 if (pagingItems.isEmpty()) {
                     when (pagingItems.loadState.refresh) {
-                        LoadState.Loading -> LoadingItem(
+                        LoadState.Loading -> FeedLoading(
                             modifier = Modifier
                                 .padding(vertical = 64.dp)
                                 .fillMaxWidth(),
                         )
 
-                        is LoadState.NotLoading -> NoFeedContent(
+                        is LoadState.NotLoading -> FeedNoContent(
                             modifier = Modifier
                                 .padding(vertical = 64.dp)
                                 .fillMaxWidth(),
@@ -383,7 +406,7 @@ private fun UserProfileDetails(
 
         NostrUserText(
             modifier = Modifier.padding(horizontal = 16.dp),
-            displayName = profileDetails?.displayName ?: profileId.asEllipsizedNpub(),
+            displayName = profileDetails?.authorDisplayName ?: profileId.asEllipsizedNpub(),
             internetIdentifier = profileDetails?.internetIdentifier,
             style = AppTheme.typography.titleLarge,
         )

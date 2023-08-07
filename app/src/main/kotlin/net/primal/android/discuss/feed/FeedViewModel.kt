@@ -23,10 +23,14 @@ import net.primal.android.discuss.feed.FeedContract.UiState
 import net.primal.android.feed.repository.FeedRepository
 import net.primal.android.feed.repository.PostRepository
 import net.primal.android.navigation.feedDirective
+import net.primal.android.networking.relays.errors.NostrPublishException
+import net.primal.android.settings.repository.DebouncedSettingsSyncer
+import net.primal.android.settings.repository.SettingsRepository
 import net.primal.android.user.active.ActiveAccountStore
 import net.primal.android.user.active.ActiveUserAccountState
 import java.time.Instant
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.minutes
 
 @HiltViewModel
 class FeedViewModel @Inject constructor(
@@ -34,9 +38,12 @@ class FeedViewModel @Inject constructor(
     private val feedRepository: FeedRepository,
     private val postRepository: PostRepository,
     private val activeAccountStore: ActiveAccountStore,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     private val feedDirective: String = savedStateHandle.feedDirective ?: "network;trending"
+
+    private var userSettingsUpdater: DebouncedSettingsSyncer? = null
 
     private val _state = MutableStateFlow(
         UiState(
@@ -56,16 +63,17 @@ class FeedViewModel @Inject constructor(
     }
 
     init {
-        loadFeedTitle()
+        subscribeToFeedTitle()
         subscribeToEvents()
         subscribeToFeedSyncUpdates()
         subscribeToActiveAccount()
     }
 
-    private fun loadFeedTitle() = viewModelScope.launch {
-        val feed = feedRepository.findFeedByDirective(feedDirective = feedDirective)
-        setState {
-            copy(feedTitle = feed?.name ?: feedDirective.ellipsizeMiddle(size = 8))
+    private fun subscribeToFeedTitle() = viewModelScope.launch {
+        feedRepository.observeFeedByDirective(feedDirective = feedDirective).collect {
+            setState {
+                copy(feedTitle = it?.name ?: feedDirective.ellipsizeMiddle(size = 8))
+            }
         }
     }
 
@@ -102,6 +110,10 @@ class FeedViewModel @Inject constructor(
         activeAccountStore.activeAccountState
             .filterIsInstance<ActiveUserAccountState.ActiveUserAccount>()
             .collect {
+                userSettingsUpdater = DebouncedSettingsSyncer(
+                    userId = it.data.pubkey,
+                    repository = settingsRepository,
+                )
                 setState {
                     copy(activeAccountAvatarUrl = it.data.pictureUrl)
                 }
@@ -112,7 +124,9 @@ class FeedViewModel @Inject constructor(
         _event.collect {
             when (it) {
                 UiEvent.FeedScrolledToTop -> clearSyncStats()
+                UiEvent.RequestSyncSettings -> syncSettings()
                 is UiEvent.PostLikeAction -> likePost(it)
+                is UiEvent.RepostAction -> repostPost(it)
             }
         }
     }
@@ -128,13 +142,29 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    private fun syncSettings() = viewModelScope.launch {
+        userSettingsUpdater?.updateSettingsWithDebounce(timeoutInSeconds = 30.minutes.inWholeSeconds)
+    }
+
     private fun likePost(postLikeAction: UiEvent.PostLikeAction) = viewModelScope.launch {
         try {
             postRepository.likePost(
                 postId = postLikeAction.postId,
                 postAuthorId = postLikeAction.postAuthorId,
             )
-        } catch (error: PostRepository.FailedToPublishLikeEvent) {
+        } catch (error: NostrPublishException) {
+            // Propagate error to the UI
+        }
+    }
+
+    private fun repostPost(repostAction: UiEvent.RepostAction) = viewModelScope.launch {
+        try {
+            postRepository.repostPost(
+                postId = repostAction.postId,
+                postAuthorId = repostAction.postAuthorId,
+                postRawNostrEvent = repostAction.postNostrEvent,
+            )
+        } catch (error: NostrPublishException) {
             // Propagate error to the UI
         }
     }

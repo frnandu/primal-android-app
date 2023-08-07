@@ -3,9 +3,10 @@ package net.primal.android.user.accounts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.primal.android.core.utils.asEllipsizedNpub
-import net.primal.android.nostr.ext.asProfileMetadata
+import net.primal.android.nostr.ext.asProfileMetadataPO
 import net.primal.android.nostr.ext.takeContentAsUserProfileStatsOrNull
-import net.primal.android.profile.db.displayNameUiFriendly
+import net.primal.android.profile.db.authorNameUiFriendly
+import net.primal.android.profile.db.userNameUiFriendly
 import net.primal.android.user.api.UsersApi
 import net.primal.android.user.domain.Relay
 import net.primal.android.user.domain.UserAccount
@@ -19,12 +20,13 @@ class UserAccountFetcher @Inject constructor(
         val userProfileResponse = withContext(Dispatchers.IO) {
             usersApi.getUserProfile(pubkey = pubkey)
         }
-        val profileMetadata = userProfileResponse.metadata?.asProfileMetadata()
+        val profileMetadata = userProfileResponse.metadata?.asProfileMetadataPO()
         val userProfileStats = userProfileResponse.profileStats?.takeContentAsUserProfileStatsOrNull()
 
         return UserAccount(
             pubkey = pubkey,
-            displayName = profileMetadata?.displayNameUiFriendly() ?: pubkey.asEllipsizedNpub(),
+            authorDisplayName = profileMetadata?.authorNameUiFriendly() ?: pubkey.asEllipsizedNpub(),
+            userDisplayName = profileMetadata?.userNameUiFriendly() ?: pubkey.asEllipsizedNpub(),
             pictureUrl = profileMetadata?.picture,
             internetIdentifier = profileMetadata?.internetIdentifier,
             followersCount = userProfileStats?.followersCount,
@@ -48,7 +50,8 @@ class UserAccountFetcher @Inject constructor(
 
         return UserAccount(
             pubkey = pubkey,
-            displayName = pubkey.asEllipsizedNpub(),
+            authorDisplayName = pubkey.asEllipsizedNpub(),
+            userDisplayName = pubkey.asEllipsizedNpub(),
             relays = finalRelays,
             following = following ?: emptyList(),
             interests = interests ?: emptyList(),
