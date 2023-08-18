@@ -24,10 +24,10 @@ import net.primal.android.feed.repository.FeedRepository
 import net.primal.android.feed.repository.PostRepository
 import net.primal.android.navigation.feedDirective
 import net.primal.android.networking.relays.errors.NostrPublishException
-import net.primal.android.settings.repository.DebouncedSettingsSyncer
-import net.primal.android.settings.repository.SettingsRepository
-import net.primal.android.user.active.ActiveAccountStore
-import net.primal.android.user.active.ActiveUserAccountState
+import net.primal.android.user.accounts.active.ActiveAccountStore
+import net.primal.android.user.accounts.active.ActiveUserAccountState
+import net.primal.android.user.updater.UserDataUpdater
+import net.primal.android.user.updater.UserDataUpdaterFactory
 import java.time.Instant
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.minutes
@@ -38,12 +38,12 @@ class FeedViewModel @Inject constructor(
     private val feedRepository: FeedRepository,
     private val postRepository: PostRepository,
     private val activeAccountStore: ActiveAccountStore,
-    private val settingsRepository: SettingsRepository,
+    private val userDataSyncerFactory: UserDataUpdaterFactory,
 ) : ViewModel() {
 
     private val feedDirective: String = savedStateHandle.feedDirective ?: "network;trending"
 
-    private var userSettingsUpdater: DebouncedSettingsSyncer? = null
+    private var userDataUpdater: UserDataUpdater? = null
 
     private val _state = MutableStateFlow(
         UiState(
@@ -110,12 +110,12 @@ class FeedViewModel @Inject constructor(
         activeAccountStore.activeAccountState
             .filterIsInstance<ActiveUserAccountState.ActiveUserAccount>()
             .collect {
-                userSettingsUpdater = DebouncedSettingsSyncer(
-                    userId = it.data.pubkey,
-                    repository = settingsRepository,
-                )
+                userDataUpdater = userDataSyncerFactory.create(userId = it.data.pubkey)
                 setState {
-                    copy(activeAccountAvatarUrl = it.data.pictureUrl)
+                    copy(
+                        activeAccountAvatarUrl = it.data.pictureUrl,
+                        walletConnected = it.data.nostrWallet != null,
+                    )
                 }
             }
     }
@@ -124,9 +124,10 @@ class FeedViewModel @Inject constructor(
         _event.collect {
             when (it) {
                 UiEvent.FeedScrolledToTop -> clearSyncStats()
-                UiEvent.RequestSyncSettings -> syncSettings()
+                UiEvent.RequestUserDataUpdate -> updateUserData()
                 is UiEvent.PostLikeAction -> likePost(it)
                 is UiEvent.RepostAction -> repostPost(it)
+                is UiEvent.ZapAction -> zapPost(it)
             }
         }
     }
@@ -142,8 +143,8 @@ class FeedViewModel @Inject constructor(
         }
     }
 
-    private fun syncSettings() = viewModelScope.launch {
-        userSettingsUpdater?.updateSettingsWithDebounce(timeoutInSeconds = 30.minutes.inWholeSeconds)
+    private fun updateUserData() = viewModelScope.launch {
+        userDataUpdater?.updateUserDataWithDebounce(timeoutInSeconds = 30.minutes.inWholeSeconds)
     }
 
     private fun likePost(postLikeAction: UiEvent.PostLikeAction) = viewModelScope.launch {
@@ -167,6 +168,10 @@ class FeedViewModel @Inject constructor(
         } catch (error: NostrPublishException) {
             // Propagate error to the UI
         }
+    }
+
+    private fun zapPost(zapAction: UiEvent.ZapAction) = viewModelScope.launch {
+
     }
 
 }

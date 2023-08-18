@@ -2,11 +2,13 @@ package net.primal.android.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NamedNavArgument
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavOptions
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,6 +20,8 @@ import com.google.accompanist.navigation.material.ExperimentalMaterialNavigation
 import com.google.accompanist.navigation.material.ModalBottomSheetLayout
 import com.google.accompanist.navigation.material.bottomSheet
 import com.google.accompanist.navigation.material.rememberBottomSheetNavigator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.primal.android.R
 import net.primal.android.auth.login.LoginScreen
 import net.primal.android.auth.login.LoginViewModel
@@ -27,6 +31,7 @@ import net.primal.android.auth.welcome.WelcomeScreen
 import net.primal.android.core.compose.DemoPrimaryScreen
 import net.primal.android.core.compose.LockToOrientationPortrait
 import net.primal.android.core.compose.PrimalTopLevelDestination
+import net.primal.android.core.compose.findActivity
 import net.primal.android.discuss.feed.FeedScreen
 import net.primal.android.discuss.feed.FeedViewModel
 import net.primal.android.discuss.list.FeedListScreen
@@ -38,8 +43,8 @@ import net.primal.android.explore.feed.ExploreFeedScreen
 import net.primal.android.explore.feed.ExploreFeedViewModel
 import net.primal.android.explore.home.ExploreHomeScreen
 import net.primal.android.explore.home.ExploreHomeViewModel
-import net.primal.android.explore.search.ui.SearchScreen
 import net.primal.android.explore.search.SearchViewModel
+import net.primal.android.explore.search.ui.SearchScreen
 import net.primal.android.navigation.splash.SplashContract
 import net.primal.android.navigation.splash.SplashScreen
 import net.primal.android.navigation.splash.SplashViewModel
@@ -49,7 +54,7 @@ import net.primal.android.theme.AppTheme
 import net.primal.android.theme.PrimalTheme
 import net.primal.android.thread.ThreadScreen
 import net.primal.android.thread.ThreadViewModel
-
+import java.net.URLEncoder
 
 private fun NavController.navigateToWelcome() = navigate(
     route = "welcome",
@@ -67,12 +72,14 @@ private fun NavController.navigateToSearch() = navigate(route = "search")
 private fun NavController.navigateToNewPost(preFillContent: String?) =
     navigate(route = "feed/new?$NewPostPreFillContent=${preFillContent.orEmpty().asUrlEncoded()}")
 
-
-private val NavController.topLevelNavOptions
-    get() = navOptions {
-        val feedDestination = backQueue.find { it.destination.route?.contains("feed") == true }
-        val popUpToId = feedDestination?.destination?.id ?: 0
-        popUpTo(id = popUpToId)
+private val NavController.topLevelNavOptions: NavOptions
+    get() {
+        val feedDestination = currentBackStack.value.find {
+            it.destination.route?.contains("feed") == true
+        }
+        return navOptions {
+            popUpTo(id = feedDestination?.destination?.id ?: 0)
+        }
     }
 
 private fun NavController.navigateToFeed(directive: String) = navigate(
@@ -95,6 +102,11 @@ private fun NavController.navigateToProfile(profileId: String? = null) = when {
 }
 
 private fun NavController.navigateToSettings() = navigate(route = "settings")
+
+private fun NavController.navigateToWallet(nwcUrl: String? = null) = when {
+    nwcUrl != null -> navigate(route = "wallet_settings?nwcUrl=$nwcUrl")
+    else -> navigate(route = "wallet_settings")
+}
 
 private fun NavController.navigateToThread(postId: String) = navigate(route = "thread/$postId")
 
@@ -126,11 +138,25 @@ fun PrimalAppNavigation() {
     }
 
     val splashViewModel: SplashViewModel = hiltViewModel()
+    val context = LocalContext.current
     LaunchedEffect(navController, splashViewModel) {
         splashViewModel.effect.collect {
             when (it) {
                 SplashContract.SideEffect.NoActiveAccount -> navController.navigateToWelcome()
-                is SplashContract.SideEffect.ActiveAccount -> navController.navigateToFeed(directive = it.userPubkey)
+                is SplashContract.SideEffect.ActiveAccount -> {
+                    val activity = context.findActivity()
+
+                    val url = activity?.intent?.data?.toString()?.ifBlank { null }
+
+                    if (url != null && url.startsWith("nostr+walletconnect")) {
+                        navController.popBackStack()
+                        navController.navigateToWallet(nwcUrl = withContext(Dispatchers.IO) {
+                            URLEncoder.encode(url, Charsets.UTF_8.name())
+                        })
+                    } else {
+                        navController.navigateToFeed(directive = it.userPubkey)
+                    }
+                }
             }
         }
     }
@@ -293,6 +319,7 @@ private fun NavGraphBuilder.feed(
         onPostClick = { postId -> navController.navigateToThread(postId = postId) },
         onProfileClick = { profileId -> navController.navigateToProfile(profileId = profileId) },
         onHashtagClick = { hashtag -> navController.navigateToExploreFeed(query = hashtag) },
+        onWalletUnavailable = { navController.navigateToWallet() },
         onTopLevelDestinationChanged = onTopLevelDestinationChanged,
         onDrawerScreenClick = onDrawerScreenClick,
     )
@@ -365,6 +392,7 @@ private fun NavGraphBuilder.exploreFeed(
         onPostQuoteClick = { preFillContent -> navController.navigateToNewPost(preFillContent) },
         onProfileClick = { profileId -> navController.navigateToProfile(profileId) },
         onHashtagClick = { hashtag -> navController.navigateToExploreFeed(query = hashtag) },
+        onWalletUnavailable = { navController.navigateToWallet() },
     )
 }
 
@@ -437,6 +465,7 @@ private fun NavGraphBuilder.thread(
         onPostQuoteClick = { preFillContent -> navController.navigateToNewPost(preFillContent) },
         onProfileClick = { profileId -> navController.navigateToProfile(profileId) },
         onHashtagClick = { hashtag -> navController.navigateToExploreFeed(query = hashtag) },
+        onWalletUnavailable = { navController.navigateToWallet() },
     )
 }
 
@@ -458,6 +487,7 @@ private fun NavGraphBuilder.profile(
         onPostQuoteClick = { preFillContent -> navController.navigateToNewPost(preFillContent) },
         onProfileClick = { profileId -> navController.navigateToProfile(profileId = profileId) },
         onHashtagClick = { hashtag -> navController.navigateToExploreFeed(query = hashtag) },
+        onWalletUnavailable = { navController.navigateToWallet() },
     )
 }
 

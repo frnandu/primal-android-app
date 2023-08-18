@@ -8,12 +8,17 @@ import net.primal.android.db.PrimalDatabase
 import net.primal.android.nostr.ext.asProfileMetadataPO
 import net.primal.android.nostr.ext.asProfileStats
 import net.primal.android.nostr.ext.takeContentAsUserProfileStatsOrNull
+import net.primal.android.user.accounts.active.ActiveAccountStore
 import net.primal.android.user.api.UsersApi
+import net.primal.android.user.repository.UserRepository
 import javax.inject.Inject
 
 class ProfileRepository @Inject constructor(
     private val database: PrimalDatabase,
     private val usersApi: UsersApi,
+    private val activeAccountStore: ActiveAccountStore,
+    private val userRepository: UserRepository,
+    private val latestFollowingResolver: LatestFollowingResolver,
 ) {
     fun observeProfile(profileId: String) =
         database.profiles().observeProfile(profileId = profileId).filterNotNull()
@@ -38,4 +43,35 @@ class ProfileRepository @Inject constructor(
         }
     }
 
+    suspend fun follow(followedPubkey: String) {
+        updateFollowing(
+            newFollowing = latestFollowingResolver.getLatestFollowing()
+                .toMutableSet()
+                .apply {
+                    add(followedPubkey)
+                }
+        )
+    }
+
+    suspend fun unfollow(unfollowedPubkey: String) {
+        updateFollowing(
+            newFollowing = latestFollowingResolver.getLatestFollowing()
+                .toMutableSet()
+                .apply { remove(unfollowedPubkey) }
+        )
+    }
+
+    private suspend fun updateFollowing(newFollowing: Set<String>) {
+        val activeAccount = activeAccountStore.activeUserAccount()
+        val newContactsNostrEvent = usersApi.setUserContacts(
+            ownerId = activeAccount.pubkey,
+            contacts = newFollowing,
+            relays = activeAccount.relays
+        )
+
+        userRepository.updateContacts(
+            userId = activeAccount.pubkey,
+            contactsNostrEvent = newContactsNostrEvent
+        )
+    }
 }

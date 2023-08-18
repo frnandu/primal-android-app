@@ -20,14 +20,14 @@ val configProperties by lazy {
 
 android {
     namespace = "net.primal.android"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "net.primal.android"
         minSdk = 26
-        targetSdk = 33
-        versionCode = 27
-        versionName = "0.14.0"
+        targetSdk = 34
+        versionCode = 30
+        versionName = "0.14.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

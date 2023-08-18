@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -47,6 +48,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
@@ -59,12 +61,15 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.SubcomposeAsyncImage
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -73,6 +78,8 @@ import net.primal.android.core.compose.AppBarIcon
 import net.primal.android.core.compose.AvatarThumbnailListItemImage
 import net.primal.android.core.compose.IconText
 import net.primal.android.core.compose.NostrUserText
+import net.primal.android.core.compose.button.PrimalFilledButton
+import net.primal.android.core.compose.button.PrimalOutlinedButton
 import net.primal.android.core.compose.feed.FeedLazyColumn
 import net.primal.android.core.compose.feed.FeedLoading
 import net.primal.android.core.compose.feed.FeedNoContent
@@ -89,6 +96,7 @@ import net.primal.android.crypto.hexToNoteHrp
 import net.primal.android.profile.details.model.ProfileDetailsUi
 import net.primal.android.profile.details.model.ProfileStatsUi
 import net.primal.android.theme.AppTheme
+import net.primal.android.theme.PrimalTheme
 import java.text.NumberFormat
 
 @Composable
@@ -99,6 +107,7 @@ fun ProfileScreen(
     onPostQuoteClick: (String) -> Unit,
     onProfileClick: (String) -> Unit,
     onHashtagClick: (String) -> Unit,
+    onWalletUnavailable: () -> Unit,
 ) {
     val uiState = viewModel.state.collectAsState()
 
@@ -111,6 +120,7 @@ fun ProfileScreen(
         onPostQuoteClick = onPostQuoteClick,
         onProfileClick = onProfileClick,
         onHashtagClick = onHashtagClick,
+        onWalletUnavailable = onWalletUnavailable,
         eventPublisher = { viewModel.setEvent(it) },
     )
 }
@@ -137,6 +147,7 @@ fun ProfileScreen(
     onPostQuoteClick: (String) -> Unit,
     onProfileClick: (String) -> Unit,
     onHashtagClick: (String) -> Unit,
+    onWalletUnavailable: () -> Unit,
     eventPublisher: (ProfileContract.UiEvent) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -197,6 +208,7 @@ fun ProfileScreen(
         FeedLazyColumn(
             contentPadding = PaddingValues(0.dp),
             pagingItems = pagingItems,
+            walletConnected = state.walletConnected,
             listState = listState,
             onPostClick = onPostClick,
             onProfileClick = {
@@ -206,6 +218,16 @@ fun ProfileScreen(
             },
             onPostReplyClick = {
                 onPostClick(it)
+            },
+            onZapClick = { post, zapAmount, zapDescription ->
+                eventPublisher(
+                    ProfileContract.UiEvent.ZapAction(
+                        postId = post.postId,
+                        postAuthorId = post.authorId,
+                        zapAmount = zapAmount,
+                        zapDescription = zapDescription,
+                    )
+                )
             },
             onPostLikeClick = {
                 eventPublisher(
@@ -228,6 +250,7 @@ fun ProfileScreen(
                 onPostQuoteClick("\n\nnostr:${it.postId.hexToNoteHrp()}")
             },
             onHashtagClick = onHashtagClick,
+            onWalletUnavailable = onWalletUnavailable,
             shouldShowLoadingState = false,
             shouldShowNoContentState = false,
             stickyHeader = {
@@ -265,8 +288,15 @@ fun ProfileScreen(
             header = {
                 UserProfileDetails(
                     profileId = state.profileId,
+                    isFollowed = state.isProfileFollowed,
                     profileDetails = state.profileDetails,
                     profileStats = state.profileStats,
+                    onFollow = {
+                        eventPublisher(ProfileContract.UiEvent.FollowAction(state.profileId))
+                    },
+                    onUnfollow = {
+                        eventPublisher(ProfileContract.UiEvent.UnfollowAction(state.profileId))
+                    }
                 )
 
                 if (pagingItems.isEmpty()) {
@@ -389,8 +419,11 @@ private fun CoverUnavailable() {
 @Composable
 private fun UserProfileDetails(
     profileId: String,
+    isFollowed: Boolean,
     profileDetails: ProfileDetailsUi? = null,
     profileStats: ProfileStatsUi? = null,
+    onFollow: () -> Unit,
+    onUnfollow: () -> Unit,
 ) {
     val localUriHandler = LocalUriHandler.current
     val context = LocalContext.current
@@ -402,7 +435,11 @@ private fun UserProfileDetails(
             .fillMaxWidth()
             .background(color = AppTheme.colorScheme.surfaceVariant)
     ) {
-        ProfileActions()
+        ProfileActions(
+            isFollowed = isFollowed,
+            onFollow = onFollow,
+            onUnfollow = onUnfollow,
+        )
 
         NostrUserText(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -525,16 +562,70 @@ private fun UserInternetIdentifier(
 }
 
 @Composable
-private fun ProfileActions() {
+private fun ProfileActions(
+    isFollowed: Boolean,
+    onFollow: () -> Unit,
+    onUnfollow: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .padding(all = 12.dp)
+            .padding(horizontal = 16.dp)
+            .padding(top = 4.dp)
             .background(AppTheme.colorScheme.surfaceVariant),
         horizontalArrangement = Arrangement.End,
     ) {
+        when (isFollowed) {
+            true -> UnfollowButton(onClick = onUnfollow)
+            false -> FollowButton(onClick = onFollow)
+        }
+    }
+}
 
+@Composable
+fun FollowButton(
+    onClick: () -> Unit,
+) {
+    PrimalFilledButton(
+        modifier = Modifier
+            .height(36.dp)
+            .width(100.dp),
+        shape = AppTheme.shapes.medium,
+        contentPadding = PaddingValues(
+            horizontal = 16.dp,
+            vertical = 0.dp,
+        ),
+        textStyle = AppTheme.typography.bodySmall,
+        onClick = onClick,
+    ) {
+        Text(
+            text = stringResource(id = R.string.profile_follow_button),
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun UnfollowButton(
+    onClick: () -> Unit,
+) {
+    PrimalOutlinedButton(
+        modifier = Modifier
+            .height(36.dp)
+            .width(100.dp),
+        shape = AppTheme.shapes.medium,
+        contentPadding = PaddingValues(
+            horizontal = 16.dp,
+            vertical = 0.dp,
+        ),
+        textStyle = AppTheme.typography.bodySmall,
+        onClick = onClick,
+    ) {
+        Text(
+            text = stringResource(id = R.string.profile_unfollow_button),
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
@@ -572,7 +663,7 @@ private fun UserPublicKey(
     onCopyClick: (String) -> Unit,
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = CenterVertically,
     ) {
         IconText(
             modifier = Modifier
@@ -581,6 +672,7 @@ private fun UserPublicKey(
             text = pubkey.asEllipsizedNpub(),
             style = AppTheme.typography.bodySmall,
             color = AppTheme.extraColorScheme.onSurfaceVariantAlt4,
+            leadingIconTintColor = AppTheme.extraColorScheme.onSurfaceVariantAlt4,
             leadingIcon = PrimalIcons.Key,
             leadingIconSize = 16.sp,
         )
@@ -604,5 +696,26 @@ private fun UserPublicKey(
             )
 
         }
+    }
+}
+
+@Preview
+@Composable
+fun PreviewProfileScreen() {
+    PrimalTheme {
+        ProfileScreen(
+            state = ProfileContract.UiState(
+                profileId = "profileId",
+                isProfileFollowed = false,
+                authoredPosts = emptyFlow(),
+            ),
+            onClose = {},
+            onPostClick = {},
+            onPostQuoteClick = {},
+            onProfileClick = {},
+            onHashtagClick = {},
+            onWalletUnavailable = {},
+            eventPublisher = {},
+        )
     }
 }

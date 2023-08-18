@@ -2,6 +2,7 @@ package net.primal.android.user.domain
 
 import kotlinx.serialization.Serializable
 import net.primal.android.core.utils.asEllipsizedNpub
+import net.primal.android.nostr.model.primal.content.ContentAppSettings
 
 @Serializable
 data class UserAccount(
@@ -13,8 +14,11 @@ data class UserAccount(
     val followingCount: Int? = null,
     val followersCount: Int? = null,
     val notesCount: Int? = null,
+    val contactsCreatedAt: Long? = null,
+    val nostrWallet: NostrWallet? = null,
+    val appSettings: ContentAppSettings? = null,
     val relays: List<Relay> = emptyList(),
-    val following: List<String> = emptyList(),
+    val following: Set<String> = emptySet(),
     val followers: List<String> = emptyList(),
     val interests: List<String> = emptyList(),
 ) {

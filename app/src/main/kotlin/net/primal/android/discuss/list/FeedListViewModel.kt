@@ -12,7 +12,7 @@ import net.primal.android.discuss.list.model.FeedUi
 import net.primal.android.feed.db.Feed
 import net.primal.android.feed.repository.FeedRepository
 import net.primal.android.settings.repository.SettingsRepository
-import net.primal.android.user.active.ActiveAccountStore
+import net.primal.android.user.accounts.active.ActiveAccountStore
 import javax.inject.Inject
 
 @HiltViewModel
@@ -42,7 +42,7 @@ class FeedListViewModel @Inject constructor(
     }
 
     private fun fetchLatestFeeds() = viewModelScope.launch {
-        settingsRepository.fetchAppSettings(pubkey = activeAccountStore.activeUserId())
+        settingsRepository.fetchAndPersistAppSettings(userId = activeAccountStore.activeUserId())
     }
 
     private fun Feed.asFeedUi() = FeedUi(directive = this.directive, name = this.name)

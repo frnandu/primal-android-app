@@ -10,18 +10,25 @@ interface FeedContract {
         val feedPostsCount: Int = 0,
         val feedTitle: String = "",
         val activeAccountAvatarUrl: String? = null,
+        val walletConnected: Boolean = false,
         val posts: Flow<PagingData<FeedPostUi>>,
         val syncStats: FeedPostsSyncStats = FeedPostsSyncStats(),
     )
 
     sealed class UiEvent {
         data object FeedScrolledToTop : UiEvent()
-        data object RequestSyncSettings : UiEvent()
+        data object RequestUserDataUpdate : UiEvent()
         data class PostLikeAction(val postId: String, val postAuthorId: String) : UiEvent()
         data class RepostAction(
             val postId: String,
             val postAuthorId: String,
             val postNostrEvent: String
+        ) : UiEvent()
+        data class ZapAction(
+            val postId: String,
+            val postAuthorId: String,
+            val zapAmount: Int?,
+            val zapDescription: String?,
         ) : UiEvent()
     }
 

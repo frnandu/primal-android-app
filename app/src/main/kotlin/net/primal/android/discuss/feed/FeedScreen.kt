@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -56,13 +57,14 @@ fun FeedScreen(
     onPostClick: (String) -> Unit,
     onProfileClick: (String) -> Unit,
     onHashtagClick: (String) -> Unit,
+    onWalletUnavailable: () -> Unit,
     onTopLevelDestinationChanged: (PrimalTopLevelDestination) -> Unit,
     onDrawerScreenClick: (DrawerScreenDestination) -> Unit,
 ) {
     val uiState = viewModel.state.collectAsState()
 
     LaunchedEffect(viewModel) {
-        viewModel.setEvent(FeedContract.UiEvent.RequestSyncSettings)
+        viewModel.setEvent(FeedContract.UiEvent.RequestUserDataUpdate)
     }
 
     FeedScreen(
@@ -73,6 +75,7 @@ fun FeedScreen(
         onPostClick = onPostClick,
         onProfileClick = onProfileClick,
         onHashtagClick = onHashtagClick,
+        onWalletUnavailable = onWalletUnavailable,
         onPrimaryDestinationChanged = onTopLevelDestinationChanged,
         onDrawerDestinationClick = onDrawerScreenClick,
     )
@@ -88,6 +91,7 @@ fun FeedScreen(
     onPostClick: (String) -> Unit,
     onProfileClick: (String) -> Unit,
     onHashtagClick: (String) -> Unit,
+    onWalletUnavailable: () -> Unit,
     onPrimaryDestinationChanged: (PrimalTopLevelDestination) -> Unit,
     onDrawerDestinationClick: (DrawerScreenDestination) -> Unit,
 ) {
@@ -128,8 +132,20 @@ fun FeedScreen(
         content = { paddingValues ->
             FeedPostList(
                 posts = state.posts,
+                walletConnected = state.walletConnected,
                 onPostClick = onPostClick,
                 onProfileClick = onProfileClick,
+                onPostReplyClick = {
+                    onPostClick(it)
+                },
+                onZapClick = { post, zapAmount, zapDescription ->
+                    eventPublisher(FeedContract.UiEvent.ZapAction(
+                        postId = post.postId,
+                        postAuthorId = post.authorId,
+                        zapAmount = zapAmount,
+                        zapDescription = zapDescription,
+                    ))
+                },
                 onPostLikeClick = {
                     eventPublisher(
                         FeedContract.UiEvent.PostLikeAction(
@@ -137,9 +153,6 @@ fun FeedScreen(
                             postAuthorId = it.authorId,
                         )
                     )
-                },
-                onPostReplyClick = {
-                    onPostClick(it)
                 },
                 onRepostClick = {
                     eventPublisher(
@@ -154,6 +167,7 @@ fun FeedScreen(
                     onNewPostClick("\n\nnostr:${it.postId.hexToNoteHrp()}")
                 },
                 onHashtagClick = onHashtagClick,
+                onWalletUnavailable = onWalletUnavailable,
                 syncStats = state.syncStats,
                 paddingValues = paddingValues,
                 feedListState = feedListState,
@@ -176,6 +190,7 @@ fun FeedScreen(
                     onClick = { onNewPostClick(null) },
                     modifier = Modifier
                         .size(bottomBarHeight)
+                        .clip(CircleShape)
                         .background(
                             brush = Brush.linearGradient(
                                 colors = listOf(
@@ -214,6 +229,7 @@ fun FeedScreenPreview() {
             onPostClick = {},
             onProfileClick = {},
             onHashtagClick = {},
+            onWalletUnavailable = {},
             onPrimaryDestinationChanged = {},
             onDrawerDestinationClick = {},
         )
