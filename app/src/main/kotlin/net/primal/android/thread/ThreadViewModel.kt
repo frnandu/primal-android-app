@@ -19,6 +19,7 @@ import net.primal.android.core.compose.feed.asFeedPostUi
 import net.primal.android.feed.repository.FeedRepository
 import net.primal.android.feed.repository.PostRepository
 import net.primal.android.navigation.postId
+import net.primal.android.networking.relays.errors.MissingRelaysException
 import net.primal.android.networking.relays.errors.NostrPublishException
 import net.primal.android.networking.sockets.errors.WssException
 import net.primal.android.nostr.ext.asEventIdTag
@@ -89,7 +90,11 @@ class ThreadViewModel @Inject constructor(
             .filterIsInstance<ActiveUserAccountState.ActiveUserAccount>()
             .collect {
                 setState {
-                    copy(walletConnected = it.data.nostrWallet != null)
+                    copy(
+                        walletConnected = it.data.nostrWallet != null,
+                        defaultZapAmount = it.data.appSettings?.defaultZapAmount,
+                        zapOptions = it.data.appSettings?.zapOptions ?: emptyList(),
+                    )
                 }
             }
     }
@@ -142,6 +147,8 @@ class ThreadViewModel @Inject constructor(
             )
         } catch (error: NostrPublishException) {
             setErrorState(error = ThreadError.FailedToPublishLikeEvent(error))
+        } catch (error: MissingRelaysException) {
+            setErrorState(error = ThreadError.MissingRelaysConfiguration(error))
         }
     }
 
@@ -154,6 +161,8 @@ class ThreadViewModel @Inject constructor(
             )
         } catch (error: NostrPublishException) {
             setErrorState(error = ThreadError.FailedToPublishRepostEvent(error))
+        } catch (error: MissingRelaysException) {
+            setErrorState(error = ThreadError.MissingRelaysConfiguration(error))
         }
     }
 
@@ -166,8 +175,8 @@ class ThreadViewModel @Inject constructor(
         try {
             zapRepository.zap(
                 userId = activeAccountStore.activeUserId(),
-                comment = zapAction.zapDescription ?: "",
-                amountInSats = zapAction.zapAmount ?: 42,
+                comment = zapAction.zapDescription,
+                amountInSats = zapAction.zapAmount,
                 target = ZapTarget.Note(
                     zapAction.postId,
                     zapAction.postAuthorId,
@@ -178,6 +187,8 @@ class ThreadViewModel @Inject constructor(
             setErrorState(error = ThreadError.FailedToPublishZapEvent(error))
         } catch (error: NostrPublishException) {
             setErrorState(error = ThreadError.FailedToPublishZapEvent(error))
+        } catch (error: MissingRelaysException) {
+            setErrorState(error = ThreadError.MissingRelaysConfiguration(error))
         } catch (error: ZapRepository.InvalidZapRequestException) {
             setErrorState(error = ThreadError.InvalidZapRequest(error))
         }
@@ -210,21 +221,28 @@ class ThreadViewModel @Inject constructor(
 
             val hashtagTags = content.parseHashtagTags().toSet()
 
-            postRepository.publishShortTextNote(
+            val imported = postRepository.publishShortTextNote(
                 content = content,
                 tags = pubkeyTags + eventTags + hashtagTags,
             )
-            scheduleFetchReplies()
+            if (imported) {
+                fetchRepliesFromNetwork()
+            } else {
+                scheduleFetchReplies()
+            }
+
             setState { copy(replyText = "") }
         } catch (error: NostrPublishException) {
             setErrorState(error = ThreadError.FailedToPublishReplyEvent(error))
+        } catch (error: MissingRelaysException) {
+            setErrorState(error = ThreadError.MissingRelaysConfiguration(error))
         } finally {
             setState { copy(publishingReply = false) }
         }
     }
 
     private fun scheduleFetchReplies() = viewModelScope.launch {
-        delay(500.milliseconds)
+        delay(750.milliseconds)
         fetchRepliesFromNetwork()
     }
 

@@ -11,6 +11,8 @@ interface FeedContract {
         val feedTitle: String = "",
         val activeAccountAvatarUrl: String? = null,
         val walletConnected: Boolean = false,
+        val defaultZapAmount: ULong? = null,
+        val zapOptions: List<ULong> = emptyList(),
         val posts: Flow<PagingData<FeedPostUi>>,
         val syncStats: FeedPostsSyncStats = FeedPostsSyncStats(),
         val error: FeedError? = null,
@@ -21,6 +23,7 @@ interface FeedContract {
             data class FailedToPublishZapEvent(val cause: Throwable) : FeedError()
             data class FailedToPublishRepostEvent(val cause: Throwable) : FeedError()
             data class FailedToPublishLikeEvent(val cause: Throwable) : FeedError()
+            data class MissingRelaysConfiguration(val cause: Throwable) : FeedError()
         }
     }
 
@@ -38,7 +41,7 @@ interface FeedContract {
             val postId: String,
             val postAuthorId: String,
             val postAuthorLightningAddress: String?,
-            val zapAmount: Int?,
+            val zapAmount: ULong?,
             val zapDescription: String?,
         ) : UiEvent()
     }

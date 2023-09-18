@@ -24,7 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -106,7 +106,7 @@ fun FeedScreen(
     val feedListState = rememberLazyListState()
 
     val bottomBarHeight = PrimalBottomBarHeightDp
-    var bottomBarOffsetHeightPx by remember { mutableStateOf(0f) }
+    var bottomBarOffsetHeightPx by remember { mutableFloatStateOf(0f) }
 
     val focusMode by remember { derivedStateOf { bottomBarOffsetHeightPx < 0f } }
 
@@ -182,6 +182,8 @@ fun FeedScreen(
                 },
                 onHashtagClick = onHashtagClick,
                 onWalletUnavailable = onWalletUnavailable,
+                defaultZapAmount = state.defaultZapAmount,
+                zapOptions = state.zapOptions,
                 syncStats = state.syncStats,
                 paddingValues = paddingValues,
                 feedListState = feedListState,
@@ -247,6 +249,7 @@ private fun ErrorHandler(
             is FeedError.FailedToPublishZapEvent -> context.getString(R.string.post_action_zap_failed)
             is FeedError.FailedToPublishLikeEvent -> context.getString(R.string.post_action_like_failed)
             is FeedError.FailedToPublishRepostEvent -> context.getString(R.string.post_action_repost_failed)
+            is FeedError.MissingRelaysConfiguration -> context.getString(R.string.app_missing_relays_config)
             else -> null
         }
 
