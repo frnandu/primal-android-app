@@ -1,12 +1,12 @@
-import java.util.Properties
+import java.util.*
 
 plugins {
     alias(libs.plugins.com.android.application)
     alias(libs.plugins.org.jetbrains.kotlin.android)
-    kotlin("kapt")
     kotlin("plugin.serialization")
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.play.publishing)
 }
 
 val configProperties by lazy {
@@ -36,8 +36,10 @@ fun extractSigningConfigProperties(storeName: String): SigningConfigProperties? 
     val storeFile = when {
         absoluteStoreFile.exists() -> absoluteStoreFile
         projectStoreFile.exists() -> projectStoreFile
-        else -> throw IllegalArgumentException("storeFile for $storeName can not be found " +
-                "at $absoluteStoreFile or $projectStoreFile")
+        else -> throw IllegalArgumentException(
+            "storeFile for $storeName can not be found " +
+                "at $absoluteStoreFile or $projectStoreFile",
+        )
     }
 
     return SigningConfigProperties(
@@ -45,7 +47,7 @@ fun extractSigningConfigProperties(storeName: String): SigningConfigProperties? 
         storeFile = storeFile,
         storePassword = properties.getProperty("$storeName.storePassword"),
         keyAlias = properties.getProperty("$storeName.keyAlias"),
-        keyAliasPassword = properties.getProperty("$storeName.keyPassword")
+        keyAliasPassword = properties.getProperty("$storeName.keyPassword"),
     )
 }
 
@@ -57,8 +59,8 @@ android {
         applicationId = "net.primal.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 33
-        versionName = "0.15.2"
+        versionCode = 57
+        versionName = "0.21.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -69,7 +71,7 @@ android {
         buildConfigField(
             type = "String",
             name = "LOCAL_STORAGE_KEY_ALIAS",
-            value = "\"${configProperties?.getProperty("localStorage.keyAlias", "")}\""
+            value = "\"${configProperties?.getProperty("localStorage.keyAlias", "")}\"",
         )
     }
 
@@ -98,7 +100,7 @@ android {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
 
@@ -139,7 +141,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.2"
+        kotlinCompilerExtensionVersion = "1.5.3"
     }
 
     compileOptions {
@@ -170,6 +172,10 @@ android {
             excludes += "META-INF/LICENSE-notice.md"
         }
     }
+
+    sourceSets {
+        findByName("main")?.java?.srcDirs(project.file("src/main/kotlin"))
+    }
 }
 
 dependencies {
@@ -178,6 +184,7 @@ dependencies {
     implementation(libs.core.splashscreen)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.activity.compose)
+    implementation(libs.androidx.lifecycle.process)
     runtimeOnly(libs.androidx.appcompat)
 
     implementation(platform(libs.compose.bom))
@@ -186,13 +193,12 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
-
-    implementation(libs.androidx.material.icons.extended)
-
     implementation(libs.compose.placeholdermaterial)
 
-    implementation(libs.constraintlayout)
     implementation(libs.compose.constraintlayout)
+    implementation(libs.constraintlayout)
+
+    implementation(libs.androidx.material.icons.extended)
 
     implementation(libs.navigation.material)
 
@@ -204,8 +210,9 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     implementation(libs.room.runtime)
+    implementation(libs.sqlcipher.android)
 
-    kapt(libs.bundles.hilt.kapt)
+    ksp(libs.bundles.hilt.compiler)
     implementation(libs.bundles.hilt)
 
     implementation(libs.datastore)
@@ -214,12 +221,17 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging.interceptor)
 
-    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.scalars)
+
     implementation(libs.retrofit.serialization.converter)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.coil)
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
+    implementation(libs.telephoto.zoomable.image)
+    implementation(libs.telephoto.zoomable.image.coil)
 
     implementation(libs.lottie.compose)
 

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -30,21 +29,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.text.isDigitsOnly
 import net.primal.android.R
+import net.primal.android.core.compose.PrimalDivider
 import net.primal.android.core.compose.PrimalTopAppBar
 import net.primal.android.core.compose.icons.PrimalIcons
 import net.primal.android.core.compose.icons.primaliconpack.ArrowBack
 import net.primal.android.theme.AppTheme
 
 @Composable
-fun ZapSettingsScreen(
-    viewModel: ZapSettingsViewModel,
-    onClose: () -> Unit,
-) {
+fun ZapSettingsScreen(viewModel: ZapSettingsViewModel, onClose: () -> Unit) {
     val uiState = viewModel.state.collectAsState()
     ZapSettingsScreen(
         uiState = uiState.value,
         onClose = onClose,
-        eventPublisher = { viewModel.setEvent(it) }
+        eventPublisher = { viewModel.setEvent(it) },
     )
 }
 
@@ -72,12 +69,14 @@ fun ZapSettingsScreen(
                     .padding(horizontal = 16.dp, vertical = 16.dp)
                     .imePadding(),
                 verticalArrangement = Arrangement.Top,
-                horizontalAlignment = Alignment.Start
+                horizontalAlignment = Alignment.Start,
             ) {
                 item {
                     Text(
                         modifier = Modifier.padding(bottom = 16.dp),
-                        text = stringResource(id = R.string.settings_zaps_default_zap_amount_header).uppercase(),
+                        text = stringResource(
+                            id = R.string.settings_zaps_default_zap_amount_header,
+                        ).uppercase(),
                         style = AppTheme.typography.bodySmall,
                     )
 
@@ -88,8 +87,8 @@ fun ZapSettingsScreen(
                             if (it.isDigitsOnly()) {
                                 eventPublisher(
                                     ZapSettingsContract.UiEvent.ZapDefaultAmountChanged(
-                                        newAmount = it.toULongOrNull()
-                                    )
+                                        newAmount = it.toULongOrNull(),
+                                    ),
                                 )
                             }
                         },
@@ -106,15 +105,17 @@ fun ZapSettingsScreen(
                         colors = zapTextFieldColors(),
                     )
 
-                    Divider(
+                    PrimalDivider(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 16.dp)
+                            .padding(vertical = 16.dp),
                     )
 
                     Text(
                         modifier = Modifier.padding(bottom = 16.dp),
-                        text = stringResource(id = R.string.settings_zaps_custom_zaps_header).uppercase(),
+                        text = stringResource(
+                            id = R.string.settings_zaps_custom_zaps_header,
+                        ).uppercase(),
                         style = AppTheme.typography.bodySmall,
                     )
 
@@ -127,15 +128,14 @@ fun ZapSettingsScreen(
                         onZapOptionsChanged = {
                             eventPublisher(
                                 ZapSettingsContract.UiEvent.ZapOptionsChanged(
-                                    newOptions = it
-                                )
+                                    newOptions = it,
+                                ),
                             )
-                        }
+                        },
                     )
-
                 }
             }
-        }
+        },
     )
 }
 
@@ -155,7 +155,7 @@ fun ZapOptionDashboard(
     onZapOptionsChanged: (List<ULong?>) -> Unit,
 ) {
     Row(
-        modifier = modifier
+        modifier = modifier,
     ) {
         ZapOption(
             modifier = Modifier
@@ -196,7 +196,7 @@ fun ZapOptionDashboard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 8.dp),
     ) {
         ZapOption(
             modifier = Modifier
@@ -253,12 +253,12 @@ fun ZapOption(
         Text(
             modifier = Modifier
                 .background(
-                    color = AppTheme.extraColorScheme.surfaceVariantAlt,
+                    color = AppTheme.extraColorScheme.surfaceVariantAlt1,
                     shape = AppTheme.shapes.small,
                 )
                 .border(
                     width = 1.dp,
-                    color = AppTheme.extraColorScheme.onSurfaceVariantAlt4,
+                    color = AppTheme.colorScheme.outline,
                     shape = AppTheme.shapes.small.copy(
                         bottomStart = CornerSize(0.dp),
                         bottomEnd = CornerSize(0.dp),
@@ -298,14 +298,15 @@ fun ZapOption(
 }
 
 @Composable
-private fun zapTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    unfocusedContainerColor = AppTheme.extraColorScheme.surfaceVariantAlt,
-    focusedContainerColor = AppTheme.extraColorScheme.surfaceVariantAlt,
-    disabledContainerColor = AppTheme.extraColorScheme.surfaceVariantAlt,
-    unfocusedBorderColor = AppTheme.extraColorScheme.onSurfaceVariantAlt4,
-    focusedBorderColor = AppTheme.extraColorScheme.onSurfaceVariantAlt4,
-    disabledBorderColor = AppTheme.extraColorScheme.onSurfaceVariantAlt4,
-    disabledTextColor = AppTheme.extraColorScheme.onSurfaceVariantAlt2,
-    focusedTextColor = AppTheme.extraColorScheme.onSurfaceVariantAlt2,
-    unfocusedTextColor = AppTheme.extraColorScheme.onSurfaceVariantAlt2,
-)
+private fun zapTextFieldColors() =
+    OutlinedTextFieldDefaults.colors(
+        unfocusedContainerColor = AppTheme.extraColorScheme.surfaceVariantAlt1,
+        focusedContainerColor = AppTheme.extraColorScheme.surfaceVariantAlt1,
+        disabledContainerColor = AppTheme.extraColorScheme.surfaceVariantAlt1,
+        unfocusedBorderColor = AppTheme.colorScheme.outline,
+        focusedBorderColor = AppTheme.extraColorScheme.onSurfaceVariantAlt4,
+        disabledBorderColor = AppTheme.colorScheme.outline,
+        disabledTextColor = AppTheme.extraColorScheme.onSurfaceVariantAlt2,
+        focusedTextColor = AppTheme.extraColorScheme.onSurfaceVariantAlt2,
+        unfocusedTextColor = AppTheme.extraColorScheme.onSurfaceVariantAlt2,
+    )

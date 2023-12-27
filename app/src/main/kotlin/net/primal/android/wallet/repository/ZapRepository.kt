@@ -1,8 +1,10 @@
 package net.primal.android.wallet.repository
 
+import java.io.IOException
+import javax.inject.Inject
 import net.primal.android.db.PrimalDatabase
 import net.primal.android.feed.repository.PostStatsUpdater
-import net.primal.android.networking.relays.RelayPool
+import net.primal.android.networking.relays.RelaysManager
 import net.primal.android.networking.relays.errors.NostrPublishException
 import net.primal.android.nostr.model.NostrEvent
 import net.primal.android.nostr.notary.NostrNotary
@@ -11,13 +13,11 @@ import net.primal.android.wallet.api.ZapsApi
 import net.primal.android.wallet.model.LightningPayRequest
 import net.primal.android.wallet.model.LightningPayResponse
 import net.primal.android.wallet.model.ZapTarget
-import java.io.IOException
-import javax.inject.Inject
 
 class ZapRepository @Inject constructor(
     private val zapsApi: ZapsApi,
     private val notary: NostrNotary,
-    private val relayPool: RelayPool,
+    private val relaysManager: RelaysManager,
     private val accountsStore: UserAccountsStore,
     private val database: PrimalDatabase,
 ) {
@@ -32,12 +32,12 @@ class ZapRepository @Inject constructor(
         val walletRelays = userAccount?.relays
         val defaultZapAmount = userAccount?.appSettings?.defaultZapAmount
 
-        val lightningAddress = when (target) {
-            is ZapTarget.Note -> target.authorLightningAddress
-            is ZapTarget.Profile -> target.lightningAddress
+        val lnUrl = when (target) {
+            is ZapTarget.Note -> target.authorLnUrl
+            is ZapTarget.Profile -> target.lnUrl
         }
 
-        if (lightningAddress.isEmpty() || nostrWallet == null || walletRelays.isNullOrEmpty()) {
+        if (lnUrl.isEmpty() || nostrWallet == null || walletRelays.isNullOrEmpty()) {
             throw InvalidZapRequestException()
         }
 
@@ -56,7 +56,7 @@ class ZapRepository @Inject constructor(
 
         try {
             statsUpdater?.increaseZapStats(amountInSats = zapAmountInSats.toInt())
-            val zapPayRequest = zapsApi.fetchZapPayRequestOrThrow(lightningAddress)
+            val zapPayRequest = zapsApi.fetchZapPayRequestOrThrow(lnUrl)
             val zapEvent = notary.signZapRequestNostrEvent(
                 userId = userId,
                 comment = zapComment,
@@ -73,7 +73,7 @@ class ZapRepository @Inject constructor(
                 request = invoice.toWalletPayRequest(),
                 nwc = nostrWallet,
             )
-            relayPool.publishEvent(nostrEvent = walletPayNostrEvent)
+            relaysManager.publishWalletEvent(nostrEvent = walletPayNostrEvent)
         } catch (error: ZapFailureException) {
             statsUpdater?.revertStats()
             throw error
@@ -83,9 +83,9 @@ class ZapRepository @Inject constructor(
         }
     }
 
-    private suspend fun ZapsApi.fetchZapPayRequestOrThrow(lightningAddress: String): LightningPayRequest {
+    private suspend fun ZapsApi.fetchZapPayRequestOrThrow(lnUrl: String): LightningPayRequest {
         return try {
-            fetchZapPayRequest(lightningAddress)
+            fetchZapPayRequest(lnUrl)
         } catch (error: IOException) {
             throw ZapFailureException(cause = error)
         } catch (error: IllegalArgumentException) {
@@ -97,14 +97,14 @@ class ZapRepository @Inject constructor(
         zapPayRequest: LightningPayRequest,
         zapEvent: NostrEvent,
         satoshiAmountInMilliSats: ULong,
-        comment: String = ""
+        comment: String = "",
     ): LightningPayResponse {
         return try {
             this.fetchInvoice(
                 request = zapPayRequest,
                 zapEvent = zapEvent,
                 satoshiAmountInMilliSats = satoshiAmountInMilliSats,
-                comment = comment
+                comment = comment,
             )
         } catch (error: IOException) {
             throw ZapFailureException(cause = error)

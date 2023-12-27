@@ -21,7 +21,9 @@ interface ExploreFeedContract {
             data class FailedToPublishRepostEvent(val cause: Throwable) : ExploreFeedError()
             data class FailedToPublishLikeEvent(val cause: Throwable) : ExploreFeedError()
             data class MissingRelaysConfiguration(val cause: Throwable) : ExploreFeedError()
-
+            data class FailedToAddToFeed(val cause: Throwable) : ExploreFeedError()
+            data class FailedToRemoveFeed(val cause: Throwable) : ExploreFeedError()
+            data class FailedToMuteUser(val cause: Throwable) : ExploreFeedError()
         }
     }
 
@@ -32,14 +34,14 @@ interface ExploreFeedContract {
         data class RepostAction(
             val postId: String,
             val postAuthorId: String,
-            val postNostrEvent: String
+            val postNostrEvent: String,
         ) : UiEvent()
         data class ZapAction(
             val postId: String,
             val postAuthorId: String,
-            val postAuthorLightningAddress: String?,
             val zapAmount: ULong?,
             val zapDescription: String?,
         ) : UiEvent()
+        data class MuteAction(val profileId: String) : UiEvent()
     }
 }

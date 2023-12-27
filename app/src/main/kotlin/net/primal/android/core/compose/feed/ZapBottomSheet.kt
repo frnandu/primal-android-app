@@ -3,6 +3,7 @@ package net.primal.android.core.compose.feed
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,9 +47,11 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import net.primal.android.R
+import net.primal.android.core.compose.AdjustTemporarilySystemBarColors
 import net.primal.android.core.compose.PrimalDefaults
 import net.primal.android.core.compose.button.PrimalLoadingButton
 import net.primal.android.core.utils.shortened
+import net.primal.android.settings.zaps.DEFAULT_ZAP_OPTIONS
 import net.primal.android.settings.zaps.PRESETS_COUNT
 import net.primal.android.theme.AppTheme
 
@@ -61,17 +64,11 @@ fun ZapBottomSheet(
     onDismissRequest: () -> Unit,
     onZap: (ULong, String?) -> Unit,
 ) {
-    if (userZapOptions != null && userZapOptions.size != PRESETS_COUNT)
-        throw IllegalArgumentException("There should be 6 zap options.")
-
-    val zapOptionsValues = userZapOptions ?: listOf(
-        21L.toULong(),
-        420.toULong(),
-        1_000.toULong(),
-        5_000.toULong(),
-        10_000.toULong(),
-        100_000.toULong(),
-    )
+    val zapOptionsValues = if (userZapOptions != null && userZapOptions.size == PRESETS_COUNT) {
+        userZapOptions
+    } else {
+        DEFAULT_ZAP_OPTIONS
+    }
 
     val zapOptions = mutableListOf(
         Pair(zapOptionsValues[0], "👍"),
@@ -79,14 +76,19 @@ fun ZapBottomSheet(
         Pair(zapOptionsValues[2], "🤙"),
         Pair(zapOptionsValues[3], "💜"),
         Pair(zapOptionsValues[4], "🔥"),
-        Pair(zapOptionsValues[5], "🚀")
+        Pair(zapOptionsValues[5], "🚀"),
     )
 
     var selectedZapAmount by remember { mutableStateOf(defaultZapAmount) }
     var selectedZapComment by remember { mutableStateOf("") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    AdjustTemporarilySystemBarColors(
+        navigationBarColor = AppTheme.extraColorScheme.surfaceVariantAlt2,
+    )
     ModalBottomSheet(
+        containerColor = AppTheme.extraColorScheme.surfaceVariantAlt2,
+        tonalElevation = 0.dp,
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
     ) {
@@ -95,7 +97,7 @@ fun ZapBottomSheet(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp)
+                .padding(bottom = 8.dp),
         ) {
             ZapTitle(receiverName = receiverName, amount = selectedZapAmount)
             ZapOptions(
@@ -105,7 +107,7 @@ fun ZapBottomSheet(
                     selectedZapAmount = amount
                     selectedZapComment =
                         zapOptions.find { it.first == amount }?.second ?: selectedZapComment
-                }
+                },
             )
             OutlinedTextField(
                 modifier = Modifier
@@ -115,7 +117,7 @@ fun ZapBottomSheet(
                 singleLine = true,
                 colors = PrimalDefaults.outlinedTextFieldColors(
                     unfocusedBorderColor = Color.Transparent,
-                    focusedBorderColor = Color.Transparent
+                    focusedBorderColor = Color.Transparent,
                 ),
                 shape = RoundedCornerShape(8.dp),
                 value = selectedZapComment,
@@ -130,7 +132,7 @@ fun ZapBottomSheet(
                         style = AppTheme.typography.bodySmall,
                         color = AppTheme.extraColorScheme.onSurfaceVariantAlt4,
                     )
-                }
+                },
             )
             Spacer(modifier = Modifier.height(24.dp))
             PrimalLoadingButton(
@@ -143,7 +145,7 @@ fun ZapBottomSheet(
                 onClick = {
                     onDismissRequest()
                     onZap(selectedZapAmount, selectedZapComment)
-                }
+                },
             )
         }
     }
@@ -153,11 +155,11 @@ fun ZapBottomSheet(
 private fun ZapOptions(
     zapOptions: List<Pair<ULong, String>>,
     selectedZapAmount: ULong,
-    onSelectedZapAmountChange: (ULong) -> Unit
+    onSelectedZapAmountChange: (ULong) -> Unit,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        contentPadding = PaddingValues(12.dp)
+        contentPadding = PaddingValues(12.dp),
     ) {
         items(zapOptions) { (defaultAmount, defaultComment) ->
             ZapOption(
@@ -166,7 +168,7 @@ private fun ZapOptions(
                 selected = selectedZapAmount == defaultAmount,
                 onClick = {
                     onSelectedZapAmountChange(defaultAmount)
-                }
+                },
             )
         }
     }
@@ -177,24 +179,28 @@ private fun ZapOption(
     defaultAmount: ULong,
     defaultComment: String,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     val selectedBorderGradientColors = Brush.linearGradient(
         listOf(
-            AppTheme.extraColorScheme.brand1,
-            AppTheme.extraColorScheme.brand2,
-        )
+            AppTheme.colorScheme.primary,
+            AppTheme.colorScheme.primary,
+        ),
     )
 
     val backgroundColor =
-        if (selected) AppTheme.colorScheme.surface else AppTheme.extraColorScheme.surfaceVariantAlt
+        if (selected) AppTheme.colorScheme.surface else AppTheme.extraColorScheme.surfaceVariantAlt1
     val borderWidth = if (selected) 1.dp else 0.dp
-    val borderBrush = if (selected) selectedBorderGradientColors else Brush.linearGradient(
-        listOf(
-            Color.Transparent,
-            Color.Transparent
+    val borderBrush = if (selected) {
+        selectedBorderGradientColors
+    } else {
+        Brush.linearGradient(
+            listOf(
+                Color.Transparent,
+                Color.Transparent,
+            ),
         )
-    )
+    }
 
     Box(
         modifier = Modifier
@@ -203,17 +209,19 @@ private fun ZapOption(
             .border(
                 width = borderWidth,
                 shape = AppTheme.shapes.small,
-                brush = borderBrush
+                brush = borderBrush,
             )
             .background(
-                color = backgroundColor
+                color = backgroundColor,
             )
-            .clickable {
-                onClick()
-            }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
             .requiredHeight(88.dp)
             .requiredWidth(88.dp)
-            .aspectRatio(1f)
+            .aspectRatio(1f),
     ) {
         Column(
             modifier = Modifier
@@ -226,8 +234,8 @@ private fun ZapOption(
                 fontWeight = FontWeight.W600,
                 fontSize = TextUnit(
                     value = 20f,
-                    type = TextUnitType.Sp
-                )
+                    type = TextUnitType.Sp,
+                ),
             )
             Text(text = defaultAmount.shortened())
         }
@@ -235,50 +243,49 @@ private fun ZapOption(
 }
 
 @Composable
-private fun ZapTitle(
-    receiverName: String,
-    amount: ULong,
-) {
+private fun ZapTitle(receiverName: String, amount: ULong) {
     Box(
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
-        Text(buildAnnotatedString {
-            withStyle(
-                style = SpanStyle(
-                    color = AppTheme.extraColorScheme.onSurfaceVariantAlt1,
-                    fontWeight = FontWeight.W700,
-                    fontSize = TextUnit(
-                        value = 20f,
-                        type = TextUnitType.Sp
-                    )
-                )
-            ) {
-                append("ZAP ${receiverName.uppercase()} ")
-            }
-            withStyle(
-                style = SpanStyle(
-                    color = AppTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.W900,
-                    fontSize = TextUnit(
-                        value = 20f,
-                        type = TextUnitType.Sp
-                    )
-                )
-            ) {
-                append("${amount.shortened()} ")
-            }
-            withStyle(
-                style = SpanStyle(
-                    color = AppTheme.extraColorScheme.onSurfaceVariantAlt1,
-                    fontWeight = FontWeight.W700,
-                    fontSize = TextUnit(
-                        value = 14f,
-                        type = TextUnitType.Sp
-                    )
-                )
-            ) {
-                append("SATS")
-            }
-        })
+        Text(
+            buildAnnotatedString {
+                withStyle(
+                    style = SpanStyle(
+                        color = AppTheme.extraColorScheme.onSurfaceVariantAlt1,
+                        fontWeight = FontWeight.W700,
+                        fontSize = TextUnit(
+                            value = 20f,
+                            type = TextUnitType.Sp,
+                        ),
+                    ),
+                ) {
+                    append("ZAP ${receiverName.uppercase()} ")
+                }
+                withStyle(
+                    style = SpanStyle(
+                        color = AppTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.W900,
+                        fontSize = TextUnit(
+                            value = 20f,
+                            type = TextUnitType.Sp,
+                        ),
+                    ),
+                ) {
+                    append("${amount.shortened()} ")
+                }
+                withStyle(
+                    style = SpanStyle(
+                        color = AppTheme.extraColorScheme.onSurfaceVariantAlt1,
+                        fontWeight = FontWeight.W700,
+                        fontSize = TextUnit(
+                            value = 14f,
+                            type = TextUnitType.Sp,
+                        ),
+                    ),
+                ) {
+                    append("SATS")
+                }
+            },
+        )
     }
 }

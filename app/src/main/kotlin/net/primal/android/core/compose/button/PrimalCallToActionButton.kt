@@ -3,9 +3,9 @@ package net.primal.android.core.compose.button
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
@@ -22,18 +22,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import net.primal.android.theme.AppTheme
 import net.primal.android.theme.PrimalTheme
+import net.primal.android.theme.domain.PrimalTheme
 
 @Composable
 fun PrimalCallToActionButton(
     title: String,
-    subtitle: String,
+    subtitle: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val buttonShape = AppTheme.shapes.small
     val borderGradientColors = listOf(
-        AppTheme.extraColorScheme.brand1,
-        AppTheme.extraColorScheme.brand2,
+        AppTheme.colorScheme.primary,
+        AppTheme.colorScheme.primary,
     )
     Button(
         modifier = modifier.then(
@@ -48,7 +49,7 @@ fun PrimalCallToActionButton(
                     shape = buttonShape,
                     ambientColor = AppTheme.colorScheme.primary,
                     spotColor = AppTheme.colorScheme.primary,
-                )
+                ),
         ),
         onClick = onClick,
         shape = buttonShape,
@@ -61,7 +62,7 @@ fun PrimalCallToActionButton(
             modifier = Modifier
                 .weight(1f)
                 .padding(vertical = 8.dp)
-                .wrapContentWidth()
+                .fillMaxWidth(),
         ) {
             Text(
                 text = title,
@@ -70,11 +71,13 @@ fun PrimalCallToActionButton(
                 color = AppTheme.colorScheme.onSurface,
             )
 
-            Text(
-                text = subtitle,
-                style = AppTheme.typography.bodySmall,
-                color = AppTheme.extraColorScheme.onSurfaceVariantAlt3,
-            )
+            if (!subtitle.isNullOrEmpty()) {
+                Text(
+                    text = subtitle,
+                    style = AppTheme.typography.bodySmall,
+                    color = AppTheme.extraColorScheme.onSurfaceVariantAlt3,
+                )
+            }
         }
 
         Image(
@@ -83,19 +86,30 @@ fun PrimalCallToActionButton(
                 .align(CenterVertically),
             imageVector = Icons.Default.KeyboardArrowRight,
             contentDescription = null,
-            colorFilter = ColorFilter.tint(color = AppTheme.extraColorScheme.onSurfaceVariantAlt1)
+            colorFilter = ColorFilter.tint(color = AppTheme.extraColorScheme.onSurfaceVariantAlt1),
         )
     }
 }
 
-
 @Preview
 @Composable
 fun PreviewButton() {
-    PrimalTheme(theme = PrimalTheme.Sunset) {
+    PrimalTheme(primalTheme = PrimalTheme.Sunset) {
         PrimalCallToActionButton(
             title = "Sign in",
             subtitle = "Already have a Nostr account? Sign in with your Nostr key.",
+            onClick = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+fun PreviewButtonWithoutDescription() {
+    PrimalTheme(primalTheme = PrimalTheme.Sunset) {
+        PrimalCallToActionButton(
+            title = "Sign in",
+            subtitle = null,
             onClick = {},
         )
     }

@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
@@ -35,41 +34,37 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import net.primal.android.theme.AppTheme
 import net.primal.android.theme.PrimalTheme
+import net.primal.android.theme.domain.PrimalTheme
 
 @Composable
 fun PrimalFilledButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = AppTheme.shapes.medium,
-    containerBrush: Brush = Brush.linearGradient(
-        colors = listOf(
-            AppTheme.extraColorScheme.brand1,
-            AppTheme.extraColorScheme.brand2,
-        ),
-    ),
+    shape: Shape = AppTheme.shapes.extraLarge,
+    containerColor: Color = AppTheme.colorScheme.primary,
     contentColor: Color = Color.White,
-    disabledContainerBrush: Brush = containerBrush,
-    disabledContentColor: Color = contentColor.copy(alpha = 0.5f),
+    disabledContainerColor: Color = AppTheme.extraColorScheme.surfaceVariantAlt1,
+    disabledContentColor: Color = AppTheme.extraColorScheme.onSurfaceVariantAlt2,
     textStyle: TextStyle = AppTheme.typography.bodyLarge,
     border: BorderStroke = BorderStroke(0.dp, Color.Unspecified),
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
-    content: @Composable RowScope.() -> Unit
+    content: @Composable RowScope.() -> Unit,
 ) {
-    val buttonContainerBrush = rememberUpdatedState(
-        if (enabled) containerBrush else disabledContainerBrush
+    val buttonContainerColor = rememberUpdatedState(
+        if (enabled) containerColor else disabledContainerColor,
     )
     val buttonContentColor = rememberUpdatedState(
-        if (enabled) contentColor else disabledContentColor
+        if (enabled) contentColor else disabledContentColor,
     )
 
     Box(
         modifier = modifier
             .semantics { role = Role.Button }
-            .shadow(elevation = 4.dp, shape)
+            .shadow(elevation = 0.dp, shape)
             .clip(shape)
             .clickable(enabled = enabled, onClick = onClick)
-            .background(brush = buttonContainerBrush.value, shape = shape)
+            .background(color = buttonContainerColor.value, shape = shape)
             .border(border = border, shape = shape),
         contentAlignment = Alignment.Center,
     ) {
@@ -81,7 +76,7 @@ fun PrimalFilledButton(
                         .fillMaxHeight(),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
-                    content = content
+                    content = content,
                 )
             }
         }
@@ -104,9 +99,9 @@ class PrimalStatePreviewProvider : PreviewParameterProvider<PrimalButtonPreviewS
 @Composable
 fun PrimalButtonPreview(
     @PreviewParameter(PrimalStatePreviewProvider::class)
-    state: PrimalButtonPreviewState
+    state: PrimalButtonPreviewState,
 ) {
-    PrimalTheme {
+    PrimalTheme(primalTheme = PrimalTheme.Sunset) {
         PrimalLoadingButton(
             modifier = Modifier.height(48.dp),
             onClick = { },

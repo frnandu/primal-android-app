@@ -1,5 +1,6 @@
 package net.primal.android.drawer
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -23,9 +24,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
+import net.primal.android.core.compose.PrimalDivider
 import net.primal.android.core.compose.PrimalNavigationBar
 import net.primal.android.core.compose.PrimalTopLevelDestination
-import kotlin.math.roundToInt
+import net.primal.android.user.domain.Badges
 
 val PrimalBottomBarHeightDp = 64.dp
 
@@ -36,6 +39,8 @@ fun PrimalDrawerScaffold(
     activeDestination: PrimalTopLevelDestination,
     onPrimaryDestinationChanged: (PrimalTopLevelDestination) -> Unit,
     onDrawerDestinationClick: (DrawerScreenDestination) -> Unit,
+    badges: Badges = Badges(),
+    showBottomBarDivider: Boolean = true,
     onActiveDestinationClick: () -> Unit = {},
     topBar: @Composable (TopAppBarScrollBehavior?) -> Unit = {},
     content: @Composable (PaddingValues) -> Unit = {},
@@ -43,8 +48,8 @@ fun PrimalDrawerScaffold(
     snackbarHost: @Composable () -> Unit = {},
     bottomBarHeight: Dp = PrimalBottomBarHeightDp,
     onBottomBarOffsetChange: (Float) -> Unit = {},
+    focusModeEnabled: Boolean = true,
 ) {
-
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -55,7 +60,7 @@ fun PrimalDrawerScaffold(
         },
         content = {
             val topAppBarState = rememberTopAppBarState()
-            val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
+            val topAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
 
             val bottomBarHeightPx = with(LocalDensity.current) {
                 bottomBarHeight.roundToPx().toFloat()
@@ -63,10 +68,7 @@ fun PrimalDrawerScaffold(
             val bottomBarOffsetHeightPx = remember { mutableFloatStateOf(0f) }
             val bottomBarNestedScrollConnection = remember {
                 object : NestedScrollConnection {
-                    override fun onPreScroll(
-                        available: Offset,
-                        source: NestedScrollSource
-                    ): Offset {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                         val delta = available.y
                         val newOffset = bottomBarOffsetHeightPx.floatValue + delta
                         bottomBarOffsetHeightPx.floatValue = newOffset.coerceIn(-bottomBarHeightPx, 0f)
@@ -77,30 +79,42 @@ fun PrimalDrawerScaffold(
             }
 
             Scaffold(
-                modifier = Modifier
-                    .nestedScroll(bottomBarNestedScrollConnection)
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
-                topBar = { topBar(scrollBehavior) },
+                modifier = if (focusModeEnabled) {
+                    Modifier
+                        .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                        .nestedScroll(bottomBarNestedScrollConnection)
+                } else {
+                    Modifier
+                },
+                topBar = { topBar(if (focusModeEnabled) topAppBarScrollBehavior else null) },
                 content = { paddingValues -> content(paddingValues) },
                 bottomBar = {
-                    PrimalNavigationBar(
+                    Column(
                         modifier = Modifier
                             .navigationBarsPadding()
                             .height(bottomBarHeight)
                             .offset {
                                 IntOffset(
                                     x = 0,
-                                    y = -bottomBarOffsetHeightPx.floatValue.roundToInt()
+                                    y = -bottomBarOffsetHeightPx.floatValue.roundToInt(),
                                 )
                             },
-                        activeDestination = activeDestination,
-                        onTopLevelDestinationChanged = onPrimaryDestinationChanged,
-                        onActiveDestinationClick = onActiveDestinationClick,
-                    )
+                    ) {
+                        if (showBottomBarDivider) {
+                            PrimalDivider()
+                        }
+
+                        PrimalNavigationBar(
+                            activeDestination = activeDestination,
+                            onTopLevelDestinationChanged = onPrimaryDestinationChanged,
+                            onActiveDestinationClick = onActiveDestinationClick,
+                            badges = badges,
+                        )
+                    }
                 },
                 floatingActionButton = floatingActionButton,
                 snackbarHost = snackbarHost,
             )
-        }
+        },
     )
 }

@@ -4,6 +4,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import net.primal.android.networking.di.PrimalCacheApiClient
 import net.primal.android.networking.primal.PrimalApiClient
 import net.primal.android.networking.primal.api.PrimalImportApi
 import net.primal.android.networking.primal.api.PrimalImportApiImpl
@@ -12,10 +13,8 @@ import net.primal.android.networking.primal.api.PrimalImportApiImpl
 @InstallIn(SingletonComponent::class)
 object PrimalImportApiModule {
     @Provides
-    fun providePrimalImportApi(
-        primalApiClient: PrimalApiClient,
-    ): PrimalImportApi = PrimalImportApiImpl(
-        primalApiClient = primalApiClient,
-    )
-
+    fun providePrimalImportApi(@PrimalCacheApiClient primalApiClient: PrimalApiClient): PrimalImportApi =
+        PrimalImportApiImpl(
+            primalApiClient = primalApiClient,
+        )
 }
